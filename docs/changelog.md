@@ -9,6 +9,7 @@
 - Update pytket version requirement to 2.13.0.
 - Update pytket-pecos version requirement to 0.3.2.
 - Update quantum-pecos to 0.8.0.dev2.
+- Support Python 3.14.
 
 ## 0.57.0 (January 2026)
 
