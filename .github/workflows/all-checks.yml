@@ -34,7 +34,7 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-latest", "macos-latest", "windows-latest"]
-        pyver: ["3.10", "3.13"]
+        pyver: ["3.10", "3.14"]
     uses: Quantinuum/pytket-workflows/.github/workflows/unit-test-wf.yml@v1
     with:
       os: ${{ matrix.os }}
