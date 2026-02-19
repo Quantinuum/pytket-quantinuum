@@ -26,13 +26,13 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
-    "pytket >= 2.11.0",
-    "pytket-qir >= 0.25.0",
+    "pytket >= 2.13.0",
+    "pytket-qir >= 0.27.1",
     "numpy >= 1.26.4",
 ]
 
 [project.optional-dependencies]
-pecos = ["pytket-pecos ~= 0.2.2", "quantum-pecos == 0.7.0.dev4", "pytket-phir ~= 0.10.1"]
+pecos = ["pytket-pecos ~= 0.3.2", "quantum-pecos == 0.8.0.dev2", "pytket-phir ~= 0.10.1"]
 
 
 [project.urls]
@@ -59,7 +59,7 @@ dev-dependencies = [
     "hypothesis >=6.111.1,<7",
     "pre-commit >=3.8.0,<4",
     "pyupgrade >=2.29,<4.0",
-    "pytket-pecos ~= 0.2.2",
-    "quantum-pecos == 0.7.0.dev4",
+    "pytket-pecos ~= 0.3.2",
+    "quantum-pecos == 0.8.0.dev2",
     "pytket-phir ~= 0.10.1",
 ]
