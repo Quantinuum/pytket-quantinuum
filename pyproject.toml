@@ -32,7 +32,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-pecos = ["pytket-pecos ~= 0.3.2", "quantum-pecos == 0.8.0.dev2", "pytket-phir ~= 0.10.1"]
+pecos = ["pytket-pecos ~= 0.3.2", "quantum-pecos == 0.8.0.dev3", "pytket-phir ~= 0.10.1"]
 
 
 [project.urls]
@@ -60,6 +60,6 @@ dev-dependencies = [
     "pre-commit >=3.8.0,<4",
     "pyupgrade >=2.29,<4.0",
     "pytket-pecos ~= 0.3.2",
-    "quantum-pecos == 0.8.0.dev2",
+    "quantum-pecos == 0.8.0.dev3",
     "pytket-phir ~= 0.10.1",
 ]
