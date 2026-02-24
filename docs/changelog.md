@@ -4,7 +4,7 @@
 
 # Changelog
 
-## 0.58.0 (Unreleased)
+## 0.58.0 (February 2026)
 
 - Update pytket version requirement to 2.13.0.
 - Update pytket-pecos version requirement to 0.3.2.
