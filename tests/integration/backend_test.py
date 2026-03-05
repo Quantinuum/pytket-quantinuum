@@ -268,7 +268,7 @@ def test_cancel(
         # will raise HTTP error if job is already completed
         b.cancel(handle)
         time.sleep(1.0)
-        assert b.circuit_status(handle).status in [StatusEnum.CANCELLED]
+        assert b.circuit_status(handle).status in [StatusEnum.CANCELLED]  # noqa: FURB171
     except QuantinuumAPIError as err:
         check_completed = "job has completed already" in str(err)
         assert check_completed

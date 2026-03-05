@@ -106,7 +106,7 @@ class QuantinuumAPI:
         """
         self.online = True
 
-        self.url = f"{api_url if api_url else self.DEFAULT_API_URL}v{api_version}/"
+        self.url = f"{api_url if api_url else self.DEFAULT_API_URL}v{api_version}/"  # noqa: FURB110
 
         if session is None:
             self.session = Session()
