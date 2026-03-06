@@ -35,7 +35,7 @@
 - Update pytket-pecos version requirement to 0.3.2.
 - Update quantum-pecos version requirement to .
 - Update pytket-phir version requirement to 0.10.1.
-- set scratch_reg_resize_pass max_size to 63 in the default passes
+- Set scratch_reg_resize_pass max_size to 63 in the default passes
 
 ## 0.55.2 (December 2025)
 
