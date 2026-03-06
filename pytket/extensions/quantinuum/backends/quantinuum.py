@@ -726,7 +726,7 @@ class QuantinuumBackend(Backend):
         assert optimisation_level in range(4)
         passlist = [
             DecomposeBoxes(),
-            scratch_reg_resize_pass(),
+            scratch_reg_resize_pass(max_size=63),
         ]
         squash = AutoSquash({OpType.PhasedX, OpType.Rz})
         target_2qb_gate = self.compilation_config.target_2qb_gate
