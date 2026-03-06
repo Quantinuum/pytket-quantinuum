@@ -16,7 +16,7 @@
 # issue on the MacOS CI, whereby pytest would hang indefinitely after the collection
 # phase.
 
-from http import HTTPStatus  # noqa: I001
+from http import HTTPStatus
 from io import StringIO
 from typing import Any
 from unittest.mock import MagicMock, patch
