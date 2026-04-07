@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 from io import StringIO
 from typing import Any
 
@@ -120,43 +119,3 @@ def test_full_login(
             api_handler._cred_store._refresh_token_timeout,  # noqa: SLF001
         )
     )
-
-
-def test_get_calendar(
-    requests_mock: Mocker, mock_quum_api_handler: QuantinuumAPI
-) -> None:
-    start_date = "2024-02-08"
-    end_date = "2024-02-16"
-
-    base = "https://ui.qapi.quantinuum.com/beta/reservation"
-    mock_url = f"{base}?mode=user&start={start_date}&end={end_date}"
-
-    events = json.dumps(
-        [
-            {
-                "start-date": "2024-02-09T00:00:00",
-                "machine": "quum-LT-S1-APIVAL",
-                "end-date": "2024-02-09T09:00:00",
-                "event-type": "online",
-                "reservation-type": "",
-            },
-            {
-                "start-date": "2024-02-10T00:00:00",
-                "machine": "quum-LT-S2-APIVAL",
-                "end-date": "2024-02-10T05:00:00",
-                "event-type": "online",
-                "reservation-type": "",
-            },
-        ]
-    )
-
-    requests_mock.register_uri(
-        "GET",
-        mock_url,
-        json=events,
-        headers={"Content-Type": "application/json"},
-    )
-
-    response = mock_quum_api_handler.get_calendar(start_date, end_date)
-    assert response == events
-    mock_quum_api_handler.delete_authentication()

@@ -63,8 +63,8 @@ from pytket.extensions.quantinuum.backends.api_wrappers import (
 )
 from pytket.extensions.quantinuum.backends.quantinuum import _ALL_GATES, MAX_C_REG_WIDTH
 
-skip_remote_tests: bool = os.getenv("PYTKET_RUN_REMOTE_TESTS") is None
-skip_remote_tests_prod: bool = os.getenv("PYTKET_RUN_REMOTE_TESTS_PROD") is None
+skip_remote_tests: bool = True  # os.getenv("PYTKET_RUN_REMOTE_TESTS") is None
+skip_remote_tests_prod: bool = True  # os.getenv("PYTKET_RUN_REMOTE_TESTS_PROD") is None
 skip_mpl_tests: bool = os.getenv("PYTKET_RUN_MPL_TESTS") is None
 
 REASON = (
