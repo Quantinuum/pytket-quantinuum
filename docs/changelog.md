@@ -29,7 +29,7 @@
 
 ## 0.55.3 (April 2026)
 
-- Changes to this version at not available in 0.56.1 and higher
+- Changes to this version are not available in 0.56.1 and higher
 - Update pytket version requirement to 2.16.0.
 - Update pytket-qir version requirement to 1.0.0.
 - Update pytket-pecos version requirement to 0.3.2.
