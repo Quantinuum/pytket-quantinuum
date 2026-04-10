@@ -1067,7 +1067,7 @@ try installing with the `pecos` option."
                 circ = configuration.circuit.copy()
                 unused_bits = set(circ.bits)
                 for cmd in circ.get_commands():
-                    unused_bits = unused_bits - set(cmd.args)  # type: ignore
+                    unused_bits = unused_bits - set(cmd.args)
                 for bit in unused_bits:
                     circ.add_c_setbits([False], [bit])
 
