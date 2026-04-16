@@ -214,10 +214,13 @@ class QuantinuumBackendCompilationConfig:
       The default is to allow implicit swaps.
     * ``target_2qb_gate``: Choice of two-qubit gate. The default is to use the device's
       default.
+    * ``preserve_qubit_names``: If `True`, keep the original qubit and bit names in the
+      compiled circuit. The default is `False`, meaning that qubits may be renamed.
     """
 
     allow_implicit_swaps: bool = True
     target_2qb_gate: OpType | None = None
+    preserve_qubit_names: bool = False
 
 
 @cache
@@ -680,7 +683,8 @@ class QuantinuumBackend(Backend):
         # of qubits actually used in the Circuit.
         # The Circuit qubits attribute is iterated through, with the ith
         # qubit being assigned to the ith qubit of a new "q" register
-        passlist.append(FlattenRelabelRegistersPass("q"))
+        if not self.compilation_config.preserve_qubit_names:
+            passlist.append(FlattenRelabelRegistersPass("q"))
         return SequencePass(passlist)
 
     @staticmethod
