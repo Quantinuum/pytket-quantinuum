@@ -4,6 +4,10 @@
 
 # Changelog
 
+## 0.59.0 (unreleased)
+
+- Add `preserve_qubit_names` option to `QuantinuumBackendCompilationConfig`.
+
 ## 0.58.1 (April 2026)
 
 - Updates to documentation

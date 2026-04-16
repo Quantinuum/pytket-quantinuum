@@ -562,3 +562,19 @@ def test_pass_from_info() -> None:
     actual_pass = QuantinuumBackend.pass_from_info(info)
     expected_pass = be.default_compilation_pass()
     assert actual_pass.to_dict() == expected_pass.to_dict()
+
+
+def test_preserve_qubit_names() -> None:
+    b = QuantinuumBackend(
+        "H2-1",
+        machine_debug=True,
+        compilation_config=QuantinuumBackendCompilationConfig(
+            preserve_qubit_names=True
+        ),
+    )
+    c = Circuit(1, 1)
+    qb = Qubit("a", 3)
+    c.add_qubit(qb)
+    c.H(qb).measure_all()
+    c1 = b.get_compiled_circuit(c)
+    assert c.qubits == c1.qubits
