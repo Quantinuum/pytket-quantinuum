@@ -4,9 +4,13 @@
 
 # Changelog
 
-## 0.59.0 (unreleased)
+## 0.59.0 (April 2026)
 
 - Add `preserve_qubit_names` option to `QuantinuumBackendCompilationConfig`.
+- Update pytket version requirement to 2.16.0.
+- Update pytket-pecos version requirement to 0.3.3.
+- Update quantum-pecos to 0.8.0.dev8.
+- Update pytket-qir version requirement to 1.0.0.
 
 ## 0.58.1 (April 2026)
 
