@@ -4,6 +4,10 @@
 
 # Changelog
 
+## 0.59.1 (May 2026)
+
+- Update pytket version requirement to 2.(17+).
+
 ## 0.59.0 (April 2026)
 
 - Add `preserve_qubit_names` option to `QuantinuumBackendCompilationConfig`.
