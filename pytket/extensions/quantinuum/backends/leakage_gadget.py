@@ -107,13 +107,13 @@ def get_detection_circuit(circuit: Circuit, n_device_qubits: int) -> Circuit:  #
         elif op.is_gate():
             detection_circuit.add_gate(op.type, op.params, args)
         elif op.type == OpType.SetBits:
-            detection_circuit.add_c_setbits(op.values, args)  # type: ignore
+            detection_circuit.add_c_setbits(op.values, args)
         elif op.type == OpType.CopyBits:
             assert len(args) % 2 == 0
             n = len(args) // 2
-            detection_circuit.add_c_copybits(args[:n], args[n:])  # type: ignore
+            detection_circuit.add_c_copybits(args[:n], args[n:])
         elif op.type == OpType.ClExpr:
-            detection_circuit.add_clexpr(op.expr, args)  # type: ignore
+            detection_circuit.add_clexpr(op.expr, args)
         elif op.type == OpType.RNGSeed:
             creg = BitRegister(args[0].reg_name, 64)
             detection_circuit.set_rng_seed(creg)
