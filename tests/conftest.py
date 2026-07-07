@@ -89,7 +89,7 @@ def mock_credentials() -> tuple[str, str]:
 def mock_token() -> str:
     # A mock token that expires in 2073
     token_payload = {"exp": 3278815149.143694}
-    mock_token = jwt.encode(token_payload, key="", algorithm="HS256")
+    mock_token = jwt.encode(token_payload, key="0", algorithm="HS256")
     return str(mock_token)
 
 
