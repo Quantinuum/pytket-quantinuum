@@ -4,6 +4,10 @@
 
 # Changelog
 
+## 0.55.4 (July 2026)
+
+- Allow more classical operations when constructing leakage detection gadgets.
+
 ## 0.55.1 (November 2025)
 
 - Add static method `pass_from_info` to `QuantinuumBackend` so that we can compile directly from a `BackendInfo`.
