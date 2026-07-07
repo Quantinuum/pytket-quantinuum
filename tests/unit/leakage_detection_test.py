@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 from pytket.backends.backendresult import BackendResult
+from pytket.circuit import BitRegister
 from pytket.utils.outcomearray import OutcomeArray
 
 from pytket import Bit, Circuit, OpType, Qubit  # type: ignore
@@ -225,14 +226,18 @@ def test_postselection_discard_1() -> None:
     assert discard_result[(1, 1)] == 33
 
 
-if __name__ == "__main__":
-    test_postselection_circuits_1qb_task_gen()
-    test_postselection_circuits_2qb_2_spare_task_gen()
-    test_postselection_circuits_2qb_1_spare_task_gen()
-    test_postselection_discard_0()
-    test_postselection_discard_1()
-    test_postselection_existing_qubit()
-    test_postselection_existing_bit()
-    test_postselection_no_qubits()
-    test_postselection_not_enough_device_qubits_0()
-    test_postselection_not_enough_device_qubits_1()
+def test_classical_ops() -> None:
+    c = Circuit(2, 2)
+    c.add_c_register("reg32", 32)
+    c.add_c_register("reg64", 64)
+    c.H(0).CX(0, 1)
+    c.add_c_setbits([True, False], [Bit(0), Bit(1)])
+    c.add_c_copybits([Bit(0)], [Bit(1)])
+    c.set_rng_seed(BitRegister("reg64", 64))
+    c.set_rng_bound(BitRegister("reg32", 32))
+    c.set_rng_index(BitRegister("reg32", 32))
+    c.get_rng_num(BitRegister("reg32", 32))
+    c.get_job_shot_num(BitRegister("reg32", 32))
+    c.measure_all()
+    c_d = get_detection_circuit(c, 100)
+    assert c_d.n_qubits == 4

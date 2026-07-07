@@ -16,6 +16,7 @@ from collections import Counter
 from typing import TYPE_CHECKING, cast
 
 from pytket.backends.backendresult import BackendResult
+from pytket.circuit import BitRegister
 from pytket.utils.outcomearray import OutcomeArray
 
 from pytket import Bit, Circuit, OpType, Qubit  # type: ignore
@@ -54,7 +55,7 @@ def get_leakage_gadget_circuit(
     return c
 
 
-def get_detection_circuit(circuit: Circuit, n_device_qubits: int) -> Circuit:  # noqa: PLR0912
+def get_detection_circuit(circuit: Circuit, n_device_qubits: int) -> Circuit:  # noqa: PLR0912 PLR0915
     """
     For a passed circuit, appends a leakage detection circuit for
     each end of circuit measurement using spare device qubits.
@@ -90,8 +91,9 @@ def get_detection_circuit(circuit: Circuit, n_device_qubits: int) -> Circuit:  #
     # end of Circuit Measure gates
     end_circuit_measures: dict[Qubit, Bit] = {}
     for com in circuit:
-        if com.op.type == OpType.Barrier:
-            detection_circuit.add_barrier(com.args)
+        op, args = com.op, com.args
+        if op.type == OpType.Barrier:
+            detection_circuit.add_barrier(args)
             continue
         # first check if a mid circuit measure needs to be readded
         for q in com.qubits:
@@ -99,13 +101,38 @@ def get_detection_circuit(circuit: Circuit, n_device_qubits: int) -> Circuit:  #
             # "mid-circuit" measure operation
             if q in end_circuit_measures:
                 detection_circuit.Measure(q, end_circuit_measures.pop(q))
-        if com.op.type == OpType.Measure:
+        if op.type == OpType.Measure:
             # if this is "mid-circuit" then this will be rewritten later
             end_circuit_measures[com.qubits[0]] = com.bits[0]
-        elif com.op.params:
-            detection_circuit.add_gate(com.op.type, com.op.params, com.args)
+        elif op.is_gate():
+            detection_circuit.add_gate(op.type, op.params, args)
+        elif op.type == OpType.SetBits:
+            detection_circuit.add_c_setbits(op.values, args)  # type: ignore
+        elif op.type == OpType.CopyBits:
+            assert len(args) % 2 == 0
+            n = len(args) // 2
+            detection_circuit.add_c_copybits(args[:n], args[n:])  # type: ignore
+        elif op.type == OpType.ClExpr:
+            detection_circuit.add_clexpr(op.expr, args)  # type: ignore
+        elif op.type == OpType.RNGSeed:
+            creg = BitRegister(args[0].reg_name, 64)
+            detection_circuit.set_rng_seed(creg)
+        elif op.type == OpType.RNGBound:
+            creg = BitRegister(args[0].reg_name, 32)
+            detection_circuit.set_rng_bound(creg)
+        elif op.type == OpType.RNGIndex:
+            creg = BitRegister(args[0].reg_name, 32)
+            detection_circuit.set_rng_index(creg)
+        elif op.type == OpType.RNGNum:
+            creg = BitRegister(args[0].reg_name, 32)
+            detection_circuit.get_rng_num(creg)
+        elif op.type == OpType.JobShotNum:
+            creg = BitRegister(args[0].reg_name, 32)
+            detection_circuit.get_job_shot_num(creg)
         else:
-            detection_circuit.add_gate(com.op.type, com.args)
+            raise ValueError(
+                f"Operation type {op.type} not supported in leakage detection circuit."
+            )
 
     # for each entry in end_circuit_measures, we want to add a leakage_gadget_circuit
     # we try to use each free architecture qubit as few times as possible
