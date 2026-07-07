@@ -4,7 +4,7 @@
 
 # Changelog
 
-## 0.55.4 (July 2026)
+## 0.55.5 (July 2026)
 
 - Allow more classical operations when constructing leakage detection gadgets.
 
