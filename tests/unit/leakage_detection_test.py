@@ -227,12 +227,16 @@ def test_postselection_discard_1() -> None:
 
 
 def test_classical_ops() -> None:
-    c = Circuit(2, 2)
+    c = Circuit(2, 3)
     c.add_c_register("reg32", 32)
     c.add_c_register("reg64", 64)
     c.H(0).CX(0, 1)
     c.add_c_setbits([True, False], [Bit(0), Bit(1)])
     c.add_c_copybits([Bit(0)], [Bit(1)])
+    c.add_c_and(Bit(0), Bit(1), Bit(2))
+    c.add_c_or(Bit(1), Bit(2), Bit(0))
+    c.add_c_xor(Bit(2), Bit(0), Bit(1))
+    c.add_c_not(Bit(0), Bit(1))
     c.set_rng_seed(BitRegister("reg64", 64))
     c.set_rng_bound(BitRegister("reg32", 32))
     c.set_rng_index(BitRegister("reg32", 32))
