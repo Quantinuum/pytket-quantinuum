@@ -128,6 +128,24 @@ def get_detection_circuit(circuit: Circuit, n_device_qubits: int) -> Circuit:  #
         elif op.type == OpType.JobShotNum:
             creg = BitRegister(args[0].reg_name, 32)
             detection_circuit.get_job_shot_num(creg)
+        elif op.type == OpType.ExplicitPredicate:
+            match op.get_name():
+                case "AND":
+                    [arg0_in, arg1_in, arg_out] = args
+                    detection_circuit.add_c_and(arg0_in, arg1_in, arg_out)  # type: ignore
+                case "OR":
+                    [arg0_in, arg1_in, arg_out] = args
+                    detection_circuit.add_c_or(arg0_in, arg1_in, arg_out)  # type: ignore
+                case "XOR":
+                    [arg0_in, arg1_in, arg_out] = args
+                    detection_circuit.add_c_xor(arg0_in, arg1_in, arg_out)  # type: ignore
+                case "NOT":
+                    [arg_in, arg_out] = args
+                    detection_circuit.add_c_not(arg_in, arg_out)  # type: ignore
+                case _:
+                    raise ValueError(
+                        f"ExplicitPredicate '{op.get_name()}' not supported in leakage detection circuit."
+                    )
         else:
             raise ValueError(
                 f"Operation type {op.type} not supported in leakage detection circuit."
