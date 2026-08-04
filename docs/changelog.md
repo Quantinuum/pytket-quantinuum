@@ -4,6 +4,10 @@
 
 # Changelog
 
+## 0.55.7 (August 2026)
+
+- Handle named `ExplicitPredicate` ops in leakage detection circuits.
+
 ## 0.55.6 (July 2026)
 
 - Allow more classical operations when constructing leakage detection gadgets.
