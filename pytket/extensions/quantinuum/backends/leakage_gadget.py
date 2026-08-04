@@ -133,16 +133,16 @@ def get_detection_circuit(circuit: Circuit, n_device_qubits: int) -> Circuit:  #
             match op.get_name():
                 case "AND":
                     [arg0_in, arg1_in, arg_out] = args
-                    detection_circuit.add_c_and(arg0_in, arg1_in, arg_out)  # type: ignore
+                    detection_circuit.add_c_and(arg0_in, arg1_in, arg_out)
                 case "OR":
                     [arg0_in, arg1_in, arg_out] = args
-                    detection_circuit.add_c_or(arg0_in, arg1_in, arg_out)  # type: ignore
+                    detection_circuit.add_c_or(arg0_in, arg1_in, arg_out)
                 case "XOR":
                     [arg0_in, arg1_in, arg_out] = args
-                    detection_circuit.add_c_xor(arg0_in, arg1_in, arg_out)  # type: ignore
+                    detection_circuit.add_c_xor(arg0_in, arg1_in, arg_out)
                 case "NOT":
                     [arg_in, arg_out] = args
-                    detection_circuit.add_c_not(arg_in, arg_out)  # type: ignore
+                    detection_circuit.add_c_not(arg_in, arg_out)
                 case _:
                     raise ValueError(
                         f"ExplicitPredicate '{op.get_name()}' not supported in leakage detection circuit."
