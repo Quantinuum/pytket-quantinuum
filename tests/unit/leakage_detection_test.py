@@ -242,6 +242,7 @@ def test_classical_ops() -> None:
     c.set_rng_index(BitRegister("reg32", 32))
     c.get_rng_num(BitRegister("reg32", 32))
     c.get_job_shot_num(BitRegister("reg32", 32))
+    c.X(0, condition_bits=[1, 2], condition_value=2)
     c.measure_all()
     c_d = get_detection_circuit(c, 100)
     assert c_d.n_qubits == 4

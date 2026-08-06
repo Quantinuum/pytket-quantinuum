@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, cast
 
 from pytket import Bit, Circuit, OpType, Qubit
 from pytket.backends.backendresult import BackendResult
-from pytket.circuit import BitRegister
+from pytket.circuit import BitRegister, Conditional
 from pytket.utils.outcomearray import OutcomeArray
 
 if TYPE_CHECKING:
@@ -146,6 +146,15 @@ def get_detection_circuit(circuit: Circuit, n_device_qubits: int) -> Circuit:  #
                     raise ValueError(
                         f"ExplicitPredicate '{op.get_name()}' not supported in leakage detection circuit."
                     )
+        elif op.type == OpType.Conditional:
+            assert isinstance(op, Conditional)
+            detection_circuit.add_gate(
+                op.op.type,
+                op.op.params,
+                args[op.width :],
+                condition_bits=args[: op.width],
+                condition_value=op.value,
+            )
         else:
             raise ValueError(
                 f"Operation type {op.type} not supported in leakage detection circuit."
