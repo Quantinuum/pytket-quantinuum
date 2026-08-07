@@ -4,6 +4,10 @@
 
 # Changelog
 
+## 0.59.2 (August 2026)
+
+- Extend range of operations handled in leakage-detection circuits.
+
 ## 0.59.1 (May 2026)
 
 - Update pytket version requirement to 2.(17+).
