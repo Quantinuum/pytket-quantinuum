@@ -15,6 +15,6 @@ on:
 jobs:
   check-docs:
     name: Build docs and create artefact
-    uses: Quantinuum/pytket-workflows/.github/workflows/docs-wf.yml@v1
+    uses: Quantinuum/pytket-workflows/.github/workflows/docs-wf.yml@v2
     with:
       extname: "pytket-quantinuum"
