@@ -21,6 +21,11 @@ import pytest
 from pytket import Bit, Circuit, OpType, Qubit
 from pytket.backends.backendresult import BackendResult
 from pytket.circuit import BitRegister
+from pytket.extensions.quantinuum import (
+    QuantinuumAPIOffline,
+    QuantinuumBackend,
+    have_pecos,
+)
 from pytket.extensions.quantinuum.backends.leakage_gadget import (
     LEAKAGE_DETECTION_BIT_NAME_,
     LEAKAGE_DETECTION_QUBIT_NAME_,
@@ -246,3 +251,180 @@ def test_classical_ops() -> None:
     c.measure_all()
     c_d = get_detection_circuit(c, 100)
     assert c_d.n_qubits == 4
+
+
+@pytest.mark.parametrize("operation", ["not", "copy", "set", "conditional_not"])
+def test_classical_ops_after_measurement(operation: str) -> None:
+    classical_circuit = Circuit(0, 2)
+    if operation == "not":
+        classical_circuit.add_c_not(Bit(0), Bit(0))
+    elif operation == "copy":
+        classical_circuit.add_c_copybits([Bit(0)], [Bit(1)])
+    elif operation == "set":
+        classical_circuit.add_c_setbits([True], [Bit(0)])
+    else:
+        classical_circuit.add_c_not(
+            Bit(0), Bit(0), condition_bits=[1], condition_value=0
+        )
+    c = Circuit(1, 2).Measure(0, 0)
+    c.append(classical_circuit)
+
+    comparison_circuit = Circuit(1, 2)
+    comparison_circuit.append(
+        get_leakage_gadget_circuit(
+            Qubit(0),
+            Qubit(LEAKAGE_DETECTION_QUBIT_NAME_, 0),
+            Bit(LEAKAGE_DETECTION_BIT_NAME_, 0),
+        )
+    )
+    comparison_circuit.Measure(0, 0)
+    comparison_circuit.append(classical_circuit)
+    comparison_circuit.remove_blank_wires()
+    assert comparison_circuit == get_detection_circuit(c, 2)
+
+
+def test_mid_circuit_measurement_with_feedforward() -> None:
+    c = Circuit(2, 3).H(0).Measure(0, 0)
+    c.add_c_not(Bit(0), Bit(0))
+    c.X(1, condition_bits=[0], condition_value=1)
+    c.Reset(0).Measure(0, 1).Measure(1, 2)
+
+    lg_qb = Qubit(LEAKAGE_DETECTION_QUBIT_NAME_, 0)
+    comparison_circuit = Circuit(2, 3).H(0)
+    comparison_circuit.append(
+        get_leakage_gadget_circuit(Qubit(0), lg_qb, Bit(LEAKAGE_DETECTION_BIT_NAME_, 0))
+    )
+    comparison_circuit.Measure(0, 0).add_c_not(Bit(0), Bit(0))
+    comparison_circuit.X(1, condition_bits=[0], condition_value=1)
+    comparison_circuit.Reset(0)
+    comparison_circuit.append(
+        get_leakage_gadget_circuit(Qubit(0), lg_qb, Bit(LEAKAGE_DETECTION_BIT_NAME_, 1))
+    )
+    comparison_circuit.Measure(0, 1)
+    # q[0] becomes available for reuse only after its final measurement.
+    comparison_circuit.append(
+        get_leakage_gadget_circuit(
+            Qubit(1), Qubit(0), Bit(LEAKAGE_DETECTION_BIT_NAME_, 2)
+        )
+    )
+    comparison_circuit.Measure(1, 2)
+    assert comparison_circuit == get_detection_circuit(c, 3)
+
+
+def test_repeated_measurements() -> None:
+    c = Circuit(1, 1).Measure(0, 0).Measure(0, 0)
+    comparison_circuit = Circuit(1, 1)
+    for i in range(2):
+        comparison_circuit.append(
+            get_leakage_gadget_circuit(
+                Qubit(0),
+                Qubit(LEAKAGE_DETECTION_QUBIT_NAME_, 0),
+                Bit(LEAKAGE_DETECTION_BIT_NAME_, i),
+            )
+        )
+        comparison_circuit.Measure(0, 0)
+    assert comparison_circuit == get_detection_circuit(c, 2)
+
+
+def test_mid_circuit_measurement_without_spare_qubits() -> None:
+    c = Circuit(2, 2).Measure(0, 0).CX(0, 1).Measure(0, 0).Measure(1, 1)
+    comparison_circuit = Circuit(2, 2).Measure(0, 0).CX(0, 1).Measure(0, 0)
+    comparison_circuit.append(
+        get_leakage_gadget_circuit(
+            Qubit(1), Qubit(0), Bit(LEAKAGE_DETECTION_BIT_NAME_, 0)
+        )
+    )
+    comparison_circuit.Measure(1, 1)
+    assert comparison_circuit == get_detection_circuit(c, 2)
+
+
+def test_postselection_without_leakage_bits() -> None:
+    result = BackendResult(
+        shots=OutcomeArray.from_readouts([[0], [1], [1]]), c_bits=[Bit(0)]
+    )
+    assert prune_shots_detected_as_leaky(result).get_counts() == result.get_counts()
+
+
+def test_mid_circuit_measurement_reuses_finished_qubit() -> None:
+    c = Circuit(2, 3).Measure(0, 0)
+    c.X(1, condition_bits=[0], condition_value=0)
+    comparison_circuit = c.copy()
+    c.Measure(1, 1).X(1).Measure(1, 2)
+    for i in range(2):
+        comparison_circuit.append(
+            get_leakage_gadget_circuit(
+                Qubit(1), Qubit(0), Bit(LEAKAGE_DETECTION_BIT_NAME_, i)
+            )
+        )
+        comparison_circuit.Measure(1, i + 1)
+        if i == 0:
+            comparison_circuit.X(1)
+    assert comparison_circuit == get_detection_circuit(c, 2)
+
+
+@pytest.mark.parametrize(
+    ("n_device_qubits", "ancilla_indices"),
+    [(2, [0, 0, 0, 0]), (3, [0, 1, 0, 1]), (4, [0, 1, 2, 0]), (10, [0, 1, 2, 3])],
+)
+def test_mid_circuit_measurement_spare_qubit_allocation(
+    n_device_qubits: int, ancilla_indices: list[int]
+) -> None:
+    c = Circuit(1, 4)
+    comparison_circuit = Circuit(1, 4)
+    for i, ancilla_index in enumerate(ancilla_indices):
+        c.Measure(0, i)
+        comparison_circuit.append(
+            get_leakage_gadget_circuit(
+                Qubit(0),
+                Qubit(LEAKAGE_DETECTION_QUBIT_NAME_, ancilla_index),
+                Bit(LEAKAGE_DETECTION_BIT_NAME_, i),
+            )
+        )
+        comparison_circuit.Measure(0, i)
+        if i < len(ancilla_indices) - 1:
+            c.X(0)
+            comparison_circuit.X(0)
+    detection_circuit = get_detection_circuit(c, n_device_qubits)
+    assert comparison_circuit == detection_circuit
+    assert detection_circuit.n_qubits == 1 + len(set(ancilla_indices))
+    assert detection_circuit.n_qubits <= n_device_qubits
+
+
+@pytest.mark.skipif(not have_pecos(), reason="pecos not installed")
+@pytest.mark.parametrize("n_spare_qubits", [0, 1, 9])
+@pytest.mark.parametrize("case", ["final", "mid", "overwrite", "reset", "conditional"])
+def test_measurement_classical_results(n_spare_qubits: int, case: str) -> None:
+    backend = QuantinuumBackend(
+        device_name="H1-1LE",
+        api_handler=QuantinuumAPIOffline(),  # type: ignore
+    )
+    c = Circuit(1, 1).Measure(0, 0)
+    c.add_c_not(Bit(0), Bit(0))
+    expected_bits: tuple[int, ...] = (1,)
+    if case == "mid":
+        c.add_bit(Bit(1))
+        c.X(0, condition_bits=[0], condition_value=1).Measure(0, 1)
+        expected_bits = (1, 1)
+    elif case == "overwrite":
+        c = Circuit(2, 1).X(0).Measure(0, 0).Measure(1, 0)
+        c.add_c_not(Bit(0), Bit(0))
+    elif case == "reset":
+        c.Reset(0).X(0).Measure(0, 0)
+        c.add_c_not(Bit(0), Bit(0))
+        expected_bits = (0,)
+    elif case == "conditional":
+        c = Circuit(1, 2).Measure(0, 0)
+        c.add_c_not(Bit(0), Bit(0), condition_bits=[1], condition_value=0)
+        expected_bits = (1, 0)
+    expected = Counter({expected_bits: 20})
+    result = backend.run_circuit(
+        backend.get_compiled_circuit(c, optimisation_level=0), n_shots=20
+    )
+    assert result.get_counts() == expected
+    detection_circuit = get_detection_circuit(c, c.n_qubits + n_spare_qubits)
+    detection_result = backend.run_circuit(
+        backend.get_compiled_circuit(detection_circuit, optimisation_level=0),
+        n_shots=20,
+    )
+    assert detection_result.get_counts(cbits=c.bits) == expected
+    assert prune_shots_detected_as_leaky(detection_result).get_counts() == expected

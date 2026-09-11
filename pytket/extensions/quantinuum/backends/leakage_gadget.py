@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, cast
 
 from pytket import Bit, Circuit, OpType, Qubit
 from pytket.backends.backendresult import BackendResult
-from pytket.circuit import BitRegister, Conditional
+from pytket.circuit import BitRegister
 from pytket.utils.outcomearray import OutcomeArray
 
 if TYPE_CHECKING:
@@ -57,7 +57,8 @@ def get_leakage_gadget_circuit(
 def get_detection_circuit(circuit: Circuit, n_device_qubits: int) -> Circuit:  # noqa: PLR0912 PLR0915
     """
     For a passed circuit, inserts a leakage detection circuit before
-    each end of circuit measurement using spare device qubits.
+    each measurement using spare device qubits or data qubits after their
+    final measurement. Measurements are left unchecked if neither is available.
     All additional Qubit added for leakage detection are
     written to a new register "leakage_detection_qubit" and all
     additional Bit are written to a new register "leakage_detection_bit".
@@ -106,11 +107,8 @@ def get_detection_circuit(circuit: Circuit, n_device_qubits: int) -> Circuit:  #
             continue
         if op.type == OpType.Measure:
             q, b = com.qubits[0], com.bits[0]
-            if end_circuit_measures.get(q) != i:
-                detection_circuit.Measure(q, b)
-                continue
-            # if there are no spare qubits we measure the first qubit and then
-            # use it as an ancilla qubit for leakage detection
+            # if there are no spare qubits we wait until a data qubit has its
+            # final measurement before using it as an ancilla qubit
             if postselection_qubits:
                 if q.reg_name == LEAKAGE_DETECTION_QUBIT_NAME_:
                     raise ValueError(
@@ -136,8 +134,9 @@ def get_detection_circuit(circuit: Circuit, n_device_qubits: int) -> Circuit:  #
                 ps_q_index += 1
                 ps_b_index += 1
             detection_circuit.Measure(q, b)
-            # we can now use this qubit for postselection
-            postselection_qubits.append(q)
+            # only reuse qubits after their final measurement
+            if end_circuit_measures.get(q) == i:
+                postselection_qubits.append(q)
         elif op.is_gate():
             detection_circuit.add_gate(op.type, op.params, args)
         elif op.type == OpType.SetBits:
@@ -182,14 +181,7 @@ def get_detection_circuit(circuit: Circuit, n_device_qubits: int) -> Circuit:  #
                         f"ExplicitPredicate '{op.get_name()}' not supported in leakage detection circuit."
                     )
         elif op.type == OpType.Conditional:
-            assert isinstance(op, Conditional)
-            detection_circuit.add_gate(
-                op.op.type,
-                op.op.params,
-                args[op.width :],
-                condition_bits=args[: op.width],
-                condition_value=op.value,
-            )
+            detection_circuit.add_gate(op, args)
         else:
             raise ValueError(
                 f"Operation type {op.type} not supported in leakage detection circuit."
@@ -220,7 +212,7 @@ def prune_shots_detected_as_leaky(result: BackendResult) -> BackendResult:
         {
             tuple(state[: len(regular_bits)]): received_counts[state]
             for state in received_counts
-            if not any(state[-len(leakage_bits) :])
+            if not any(state[len(regular_bits) :])
         }
     )
     return BackendResult(
