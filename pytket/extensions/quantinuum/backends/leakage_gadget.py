@@ -59,6 +59,7 @@ def get_detection_circuit(circuit: Circuit, n_device_qubits: int) -> Circuit:  #
     For a passed circuit, inserts a leakage detection circuit before
     each measurement using spare device qubits or data qubits after their
     final measurement. Measurements are left unchecked if neither is available.
+    Waiting cannot free a qubit if its remaining operations depend on this measurement.
     All additional Qubit added for leakage detection are
     written to a new register "leakage_detection_qubit" and all
     additional Bit are written to a new register "leakage_detection_bit".
@@ -87,14 +88,17 @@ def get_detection_circuit(circuit: Circuit, n_device_qubits: int) -> Circuit:  #
     for b in circuit.bits:
         detection_circuit.add_bit(b)
 
-    # identify end of Circuit Measure gates without moving them past classical ops
+    # identify final measurements only to decide when data qubits can become ancillas
+    # the second pass adds gadgets to both mid-circuit and final measurements
     end_circuit_measures: dict[Qubit, int] = {}
     for i, com in enumerate(circuit):
         if com.op.type == OpType.Barrier:
             continue
         for q in com.qubits:
+            # a later use of this qubit means its previous measurement was not final
             end_circuit_measures.pop(q, None)
         if com.op.type == OpType.Measure:
+            # use the command index to distinguish repeated identical measurements
             end_circuit_measures[com.qubits[0]] = i
 
     # we try to use each free architecture qubit as few times as possible
@@ -181,6 +185,7 @@ def get_detection_circuit(circuit: Circuit, n_device_qubits: int) -> Circuit:  #
                         f"ExplicitPredicate '{op.get_name()}' not supported in leakage detection circuit."
                     )
         elif op.type == OpType.Conditional:
+            # preserve the condition without accessing gate parameters on classical ops
             detection_circuit.add_gate(op, args)
         else:
             raise ValueError(
@@ -212,6 +217,7 @@ def prune_shots_detected_as_leaky(result: BackendResult) -> BackendResult:
         {
             tuple(state[: len(regular_bits)]): received_counts[state]
             for state in received_counts
+            # start after regular bits: with no leakage bits, state[-0:] is the whole state
             if not any(state[len(regular_bits) :])
         }
     )
