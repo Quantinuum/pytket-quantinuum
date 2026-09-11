@@ -4,6 +4,14 @@
 
 # Changelog
 
+## Unreleased
+
+- Preserve classical operations after measurements in leakage-detection circuits,
+  including conditional operations.
+- Add leakage detection before mid-circuit measurements when an ancilla is available,
+  reusing data qubits only after their final measurement.
+- Preserve all shots when pruning results with no leakage-detection bits.
+
 ## 0.59.2 (August 2026)
 
 - Extend range of operations handled in leakage-detection circuits.
