@@ -218,7 +218,7 @@ def prune_shots_detected_as_leaky(result: BackendResult) -> BackendResult:
         {
             tuple(state[: len(regular_bits)]): received_counts[state]
             for state in received_counts
-            # start after regular bits: with no leakage bits, state[-0:] is the whole state
+            # start after regular bits
             if not any(state[len(regular_bits) :])
         }
     )
