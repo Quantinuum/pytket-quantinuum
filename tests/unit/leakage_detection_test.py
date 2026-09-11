@@ -253,20 +253,13 @@ def test_classical_ops() -> None:
     assert c_d.n_qubits == 4
 
 
-@pytest.mark.parametrize("operation", ["not", "copy", "set", "conditional_not"])
-def test_classical_ops_after_measurement(operation: str) -> None:
+def test_classical_ops_after_measurement() -> None:
     # Regression for #696: classical operations must be copied without reading .params.
     classical_circuit = Circuit(0, 2)
-    if operation == "not":
-        classical_circuit.add_c_not(Bit(0), Bit(0))
-    elif operation == "copy":
-        classical_circuit.add_c_copybits([Bit(0)], [Bit(1)])
-    elif operation == "set":
-        classical_circuit.add_c_setbits([True], [Bit(0)])
-    else:
-        classical_circuit.add_c_not(
-            Bit(0), Bit(0), condition_bits=[1], condition_value=0
-        )
+    classical_circuit.add_c_not(Bit(0), Bit(0))
+    classical_circuit.add_c_copybits([Bit(0)], [Bit(1)])
+    classical_circuit.add_c_setbits([True], [Bit(0)])
+    classical_circuit.add_c_not(Bit(0), Bit(0), condition_bits=[1], condition_value=0)
     c = Circuit(1, 2).Measure(0, 0)
     c.append(classical_circuit)
 
@@ -313,7 +306,6 @@ def test_mid_circuit_measurement_with_feedforward() -> None:
 
 
 def test_repeated_measurements() -> None:
-    # Identical commands still need separate gadgets; only the second frees the qubit.
     c = Circuit(1, 1).Measure(0, 0).Measure(0, 0)
     comparison_circuit = Circuit(1, 1)
     for i in range(2):
@@ -341,7 +333,7 @@ def test_mid_circuit_measurement_without_spare_qubits() -> None:
 
 
 def test_postselection_without_leakage_bits() -> None:
-    # With no leakage flags, data bits equal to 1 must not cause shots to be discarded.
+    # With no leakage flags, data bits equal to 1 shouldn't cause shots to be discarded
     result = BackendResult(
         shots=OutcomeArray.from_readouts([[0], [1], [1]]), c_bits=[Bit(0)]
     )
@@ -372,7 +364,6 @@ def test_mid_circuit_measurement_reuses_finished_qubit() -> None:
 def test_mid_circuit_measurement_spare_qubit_allocation(
     n_device_qubits: int, ancilla_indices: list[int]
 ) -> None:
-    # Check cycling through two spares and using distinct ancillas when enough exist.
     c = Circuit(1, 4)
     comparison_circuit = Circuit(1, 4)
     for i, ancilla_index in enumerate(ancilla_indices):
@@ -394,49 +385,39 @@ def test_mid_circuit_measurement_spare_qubit_allocation(
 
 
 @pytest.mark.skipif(not have_pecos(), reason="pecos not installed")
-@pytest.mark.parametrize(
-    ("case", "n_spare_qubits"),
-    [
-        ("final", 9),  # Exact reproducer for #707: measurement followed by NOT.
-        ("final", 0),
-        ("mid", 1),
-        ("overwrite", 1),
-        ("reset", 1),
-        ("conditional", 1),
-    ],
-)
-def test_measurement_classical_results(n_spare_qubits: int, case: str) -> None:
+def test_measurement_classical_results() -> None:
     backend = QuantinuumBackend(
         device_name="H1-1LE",
         api_handler=QuantinuumAPIOffline(),  # type: ignore
     )
-    c = Circuit(1, 1).Measure(0, 0)
-    c.add_c_not(Bit(0), Bit(0))
-    expected_bits: tuple[int, ...] = (1,)
-    if case == "mid":
-        c.add_bit(Bit(1))
-        c.X(0, condition_bits=[0], condition_value=1).Measure(0, 1)
-        expected_bits = (1, 1)
-    elif case == "overwrite":
-        c = Circuit(2, 1).X(0).Measure(0, 0).Measure(1, 0)
-        c.add_c_not(Bit(0), Bit(0))
-    elif case == "reset":
-        c.Reset(0).X(0).Measure(0, 0)
-        c.add_c_not(Bit(0), Bit(0))
-        expected_bits = (0,)
-    elif case == "conditional":
-        c = Circuit(1, 2).Measure(0, 0)
-        c.add_c_not(Bit(0), Bit(0), condition_bits=[1], condition_value=0)
-        expected_bits = (1, 0)
-    expected = Counter({expected_bits: 20})
-    result = backend.run_circuit(
-        backend.get_compiled_circuit(c, optimisation_level=0), n_shots=20
-    )
-    assert result.get_counts() == expected
-    detection_circuit = get_detection_circuit(c, c.n_qubits + n_spare_qubits)
-    detection_result = backend.run_circuit(
-        backend.get_compiled_circuit(detection_circuit, optimisation_level=0),
-        n_shots=20,
-    )
-    assert detection_result.get_counts(cbits=c.bits) == expected
-    assert prune_shots_detected_as_leaky(detection_result).get_counts() == expected
+    final_circuit = Circuit(1, 1).Measure(0, 0)
+    final_circuit.add_c_not(Bit(0), Bit(0))
+    mid_circuit = final_circuit.copy()
+    mid_circuit.add_bit(Bit(1))
+    mid_circuit.X(0, condition_bits=[0], condition_value=1).Measure(0, 1)
+    overwrite_circuit = Circuit(2, 1).X(0).Measure(0, 0).Measure(1, 0)
+    overwrite_circuit.add_c_not(Bit(0), Bit(0))
+    reset_circuit = final_circuit.copy().Reset(0).X(0).Measure(0, 0)
+    reset_circuit.add_c_not(Bit(0), Bit(0))
+    conditional_circuit = Circuit(1, 2).Measure(0, 0)
+    conditional_circuit.add_c_not(Bit(0), Bit(0), condition_bits=[1], condition_value=0)
+    for c, n_spare_qubits, expected_bits in [
+        (final_circuit, 9, (1,)),  # Exact reproducer for #707.
+        (final_circuit, 0, (1,)),
+        (mid_circuit, 1, (1, 1)),
+        (overwrite_circuit, 1, (1,)),
+        (reset_circuit, 1, (0,)),
+        (conditional_circuit, 1, (1, 0)),
+    ]:
+        expected = Counter({expected_bits: 20})
+        result = backend.run_circuit(
+            backend.get_compiled_circuit(c, optimisation_level=0), n_shots=20
+        )
+        assert result.get_counts() == expected
+        detection_circuit = get_detection_circuit(c, c.n_qubits + n_spare_qubits)
+        detection_result = backend.run_circuit(
+            backend.get_compiled_circuit(detection_circuit, optimisation_level=0),
+            n_shots=20,
+        )
+        assert detection_result.get_counts(cbits=c.bits) == expected
+        assert prune_shots_detected_as_leaky(detection_result).get_counts() == expected

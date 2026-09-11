@@ -58,8 +58,9 @@ def get_detection_circuit(circuit: Circuit, n_device_qubits: int) -> Circuit:  #
     """
     For a passed circuit, inserts a leakage detection circuit before
     each measurement using spare device qubits or data qubits after their
-    final measurement. Measurements are left unchecked if neither is available.
-    Waiting cannot free a qubit if its remaining operations depend on this measurement.
+    final measurement. If no ancilla is available, the measurement proceeds without
+    leakage detection.
+
     All additional Qubit added for leakage detection are
     written to a new register "leakage_detection_qubit" and all
     additional Bit are written to a new register "leakage_detection_bit".
