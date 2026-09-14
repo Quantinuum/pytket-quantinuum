@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, cast
 
 from pytket import Bit, Circuit, OpType, Qubit
 from pytket.backends.backendresult import BackendResult
-from pytket.circuit import BitRegister, Conditional
+from pytket.circuit import BitRegister
 from pytket.utils.outcomearray import OutcomeArray
 
 if TYPE_CHECKING:
@@ -56,8 +56,11 @@ def get_leakage_gadget_circuit(
 
 def get_detection_circuit(circuit: Circuit, n_device_qubits: int) -> Circuit:  # noqa: PLR0912 PLR0915
     """
-    For a passed circuit, appends a leakage detection circuit for
-    each end of circuit measurement using spare device qubits.
+    For a passed circuit, inserts a leakage detection circuit before
+    each measurement using spare device qubits or data qubits after their
+    final measurement. If no ancilla is available, the measurement proceeds without
+    leakage detection.
+
     All additional Qubit added for leakage detection are
     written to a new register "leakage_detection_qubit" and all
     additional Bit are written to a new register "leakage_detection_bit".
@@ -86,23 +89,59 @@ def get_detection_circuit(circuit: Circuit, n_device_qubits: int) -> Circuit:  #
     for b in circuit.bits:
         detection_circuit.add_bit(b)
 
-    # construct a Circuit that is the original Circuit without
-    # end of Circuit Measure gates
-    end_circuit_measures: dict[Qubit, Bit] = {}
-    for com in circuit:
+    # identify final measurements only to decide when data qubits can become ancillas
+    # the second pass adds gadgets to both mid-circuit and final measurements
+    end_circuit_measures: dict[Qubit, int] = {}
+    for i, com in enumerate(circuit):
+        if com.op.type == OpType.Barrier:
+            continue
+        for q in com.qubits:
+            # a later use of this qubit means its previous measurement was not final
+            end_circuit_measures.pop(q, None)
+        if com.op.type == OpType.Measure:
+            # use the command index to distinguish repeated identical measurements
+            end_circuit_measures[com.qubits[0]] = i
+
+    # we try to use each free architecture qubit as few times as possible
+    ps_q_index: int = 0
+    ps_b_index: int = 0
+    for i, com in enumerate(circuit):
         op, args = com.op, com.args
         if op.type == OpType.Barrier:
             detection_circuit.add_barrier(args)
             continue
-        # first check if a mid circuit measure needs to be readded
-        for q in com.qubits:
-            # this condition only true if this Qubit has previously had a
-            # "mid-circuit" measure operation
-            if q in end_circuit_measures:
-                detection_circuit.Measure(q, end_circuit_measures.pop(q))
         if op.type == OpType.Measure:
-            # if this is "mid-circuit" then this will be rewritten later
-            end_circuit_measures[com.qubits[0]] = com.bits[0]
+            q, b = com.qubits[0], com.bits[0]
+            # if there are no spare qubits we wait until a data qubit has its
+            # final measurement before using it as an ancilla qubit
+            if postselection_qubits:
+                if q.reg_name == LEAKAGE_DETECTION_QUBIT_NAME_:
+                    raise ValueError(
+                        "Leakage Gadget scheme makes a qubit register named "
+                        "'leakage_detection_qubit' but this already exists in"
+                        " the passed circuit."
+                    )
+                ps_q_index = (
+                    0 if ps_q_index == len(postselection_qubits) else ps_q_index
+                )
+                leakage_detection_bit: Bit = Bit(
+                    LEAKAGE_DETECTION_BIT_NAME_, ps_b_index
+                )
+                if leakage_detection_bit in circuit.bits:
+                    raise ValueError(
+                        "Leakage Gadget scheme makes a new Bit named 'leakage_detection_bit'"
+                        " but this already exists in the passed circuit."
+                    )
+                leakage_gadget_circuit: Circuit = get_leakage_gadget_circuit(
+                    q, postselection_qubits[ps_q_index], leakage_detection_bit
+                )
+                detection_circuit.append(leakage_gadget_circuit)
+                ps_q_index += 1
+                ps_b_index += 1
+            detection_circuit.Measure(q, b)
+            # only reuse qubits after their final measurement
+            if end_circuit_measures.get(q) == i:
+                postselection_qubits.append(q)
         elif op.is_gate():
             detection_circuit.add_gate(op.type, op.params, args)
         elif op.type == OpType.SetBits:
@@ -147,56 +186,12 @@ def get_detection_circuit(circuit: Circuit, n_device_qubits: int) -> Circuit:  #
                         f"ExplicitPredicate '{op.get_name()}' not supported in leakage detection circuit."
                     )
         elif op.type == OpType.Conditional:
-            assert isinstance(op, Conditional)
-            detection_circuit.add_gate(
-                op.op.type,
-                op.op.params,
-                args[op.width :],
-                condition_bits=args[: op.width],
-                condition_value=op.value,
-            )
+            # preserve the condition without accessing gate parameters on classical ops
+            detection_circuit.add_gate(op, args)
         else:
             raise ValueError(
                 f"Operation type {op.type} not supported in leakage detection circuit."
             )
-
-    # for each entry in end_circuit_measures, we want to add a leakage_gadget_circuit
-    # we try to use each free architecture qubit as few times as possible
-    ps_q_index: int = 0
-
-    # if there are no spare qubits we measure the first qubit and then use it as
-    # an ancilla qubit for leakage detection
-    if not postselection_qubits:
-        qb: Qubit = next(iter(end_circuit_measures))
-        bb: Bit = end_circuit_measures.pop(qb)
-        detection_circuit.Measure(qb, bb)
-        postselection_qubits.append(qb)
-
-    for ps_b_index, q in enumerate(end_circuit_measures):
-        if q.reg_name == LEAKAGE_DETECTION_QUBIT_NAME_:
-            raise ValueError(
-                "Leakage Gadget scheme makes a qubit register named "
-                "'leakage_detection_qubit' but this already exists in"
-                " the passed circuit."
-            )
-        ps_q_index = 0 if ps_q_index == len(postselection_qubits) else ps_q_index
-        leakage_detection_bit: Bit = Bit(LEAKAGE_DETECTION_BIT_NAME_, ps_b_index)
-        if leakage_detection_bit in circuit.bits:
-            raise ValueError(
-                "Leakage Gadget scheme makes a new Bit named 'leakage_detection_bit'"
-                " but this already exists in the passed circuit."
-            )
-        leakage_gadget_circuit: Circuit = get_leakage_gadget_circuit(
-            q, postselection_qubits[ps_q_index], leakage_detection_bit
-        )
-        detection_circuit.append(leakage_gadget_circuit)
-        # increment value for adding postselection to
-        ps_q_index += 1
-
-        detection_circuit.Measure(q, end_circuit_measures[q])
-
-        # we can now add this qubit to the set of qubits used for postselection
-        postselection_qubits.append(q)
 
     detection_circuit.remove_blank_wires()
     return detection_circuit
@@ -223,7 +218,8 @@ def prune_shots_detected_as_leaky(result: BackendResult) -> BackendResult:
         {
             tuple(state[: len(regular_bits)]): received_counts[state]
             for state in received_counts
-            if not any(state[-len(leakage_bits) :])
+            # start after regular bits
+            if not any(state[len(regular_bits) :])
         }
     )
     return BackendResult(
