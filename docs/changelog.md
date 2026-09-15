@@ -4,7 +4,7 @@
 
 # Changelog
 
-## Unreleased
+## 0.59.3 (September 2026)
 
 - Preserve classical operations after measurements in leakage-detection circuits,
   including conditional operations.
