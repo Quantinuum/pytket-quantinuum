@@ -17,7 +17,7 @@ Some useful links:
 
 ## Getting started
 
-`pytket-quantinuum` is compatible with Python versions 3.10 to 3.13 on Linux, MacOS
+`pytket-quantinuum` is compatible with Python versions 3.10 to 3.14 on Linux, MacOS
 and Windows. To install, run:
 
 ```shell
