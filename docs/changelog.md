@@ -4,12 +4,39 @@
 
 # Changelog
 
-## 0.58.0 (Unreleased)
+## 0.59.3 (September 2026)
+
+- Preserve classical operations after measurements in leakage-detection circuits,
+  including conditional operations.
+- Add leakage detection before mid-circuit measurements when an ancilla is available,
+  reusing data qubits only after their final measurement.
+- Preserve all shots when pruning results with no leakage-detection bits.
+
+## 0.59.2 (August 2026)
+
+- Extend range of operations handled in leakage-detection circuits.
+
+## 0.59.1 (May 2026)
+
+- Update pytket version requirement to 2.(17+).
+
+## 0.59.0 (April 2026)
+
+- Add `preserve_qubit_names` option to `QuantinuumBackendCompilationConfig`.
+- Update pytket version requirement to 2.16.0.
+- Update pytket-pecos version requirement to 0.3.3.
+- Update quantum-pecos to 0.8.0.dev8.
+- Update pytket-qir version requirement to 1.0.0.
+
+## 0.58.1 (April 2026)
+
+- Updates to documentation
+
+## 0.58.0 (February 2026)
 
 - Update pytket version requirement to 2.13.0.
 - Update pytket-pecos version requirement to 0.3.2.
-- Update quantum-pecos to 0.8.0.dev2.
-- Support Python 3.14.
+- Update quantum-pecos to 0.8.0.dev3.
 
 ## 0.57.0 (January 2026)
 
@@ -23,6 +50,16 @@
 
 - Remove all methods providing remote access to Quantinuum devices. (Please use
   `qnexus` instead.)
+
+## 0.55.3 (April 2026)
+
+- Changes to this version are not available in 0.56.1 and higher
+- Update pytket version requirement to 2.16.0.
+- Update pytket-qir version requirement to 1.0.0.
+- Update pytket-pecos version requirement to 0.3.2.
+- Update quantum-pecos version requirement to 0.8.0.dev8.
+- Update pytket-phir version requirement to 0.10.1.
+- Set scratch_reg_resize_pass max_size to 63 in the default passes
 
 ## 0.55.2 (December 2025)
 
